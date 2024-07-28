@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.10.35122.118
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GeneticSharpLearn", "GeneticSharpLearn\GeneticSharpLearn.csproj", "{4608A7EA-9BC7-480A-A7B1-2E67C5195773}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4608A7EA-9BC7-480A-A7B1-2E67C5195773}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4608A7EA-9BC7-480A-A7B1-2E67C5195773}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4608A7EA-9BC7-480A-A7B1-2E67C5195773}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4608A7EA-9BC7-480A-A7B1-2E67C5195773}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F21C1341-A710-4F1C-A18E-3A5E00D06AD5}
+	EndGlobalSection
+EndGlobal
