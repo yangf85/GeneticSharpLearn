@@ -1,94 +1,148 @@
 ﻿// See https://aka.ms/new-console-template for more information
 using GeneticSharp;
 
-// 1. 定义染色体（10位二进制字符串）
-var chromosome = new BinaryChromosome(10);
+int[] stockLengths = { 100, 100 }; // 两根100长度的木条
+int[] demandLengths = { 45, 35, 20, 10, 5 }; // 需求长度
+int[] demandQuantities = { 2, 1, 2, 3, 5 }; // 每种需求的数量
 
-// 2. 使用自定义的适应度函数
-var fitness = new MaxOnesFitness();
-
-// 3. 定义选择策略（精英选择）
+// 计算初始种群数量
+int totalDemandCount = demandQuantities.Sum();
+var chromosome = new CustomCuttingChromosome(stockLengths, demandLengths, demandQuantities);
+var population = new Population(totalDemandCount, totalDemandCount, chromosome);
+var fitness = new CustomCuttingFitness(stockLengths, demandLengths, demandQuantities);
 var selection = new EliteSelection();
-
-// 4. 定义交叉策略（单点交叉）
 var crossover = new OnePointCrossover();
+var mutation = new TworsMutation();
+var termination = new GenerationNumberTermination(1000);
 
-// 5. 定义变异策略（均匀变异）
-var mutation = new UniformMutation(true);
-
-// 6. 定义终止条件（适应度达到10或运行100代）
-var termination = new OrTermination(
-    new FitnessThresholdTermination(10),
-    new GenerationNumberTermination(200) // 增加代数
-);
-
-// 7. 创建种群
-var population = new Population(100, 200, chromosome); // 增加种群规模
-
-// 8. 创建遗传算法
 var ga = new GeneticAlgorithm(population, fitness, selection, crossover, mutation)
 {
-    Termination = termination,
-    MutationProbability = 0.2f // 增加变异率
+    Termination = termination
 };
 
-// 9. 订阅GenerationRan事件
 ga.GenerationRan += (sender, e) =>
 {
-    var bestChromosome = ga.BestChromosome as BinaryChromosome;
-    var bestFitness = bestChromosome.Fitness;
-    var genes = bestChromosome.GetGenes().Select(g => g.Value).ToArray();
-    Console.WriteLine($"代数: {ga.GenerationsNumber}");
-    Console.WriteLine($"最佳染色体适应度: {bestFitness}");
-    Console.WriteLine($"最佳染色体基因: {string.Join("", genes)}");
+    var bestChromosome = ga.BestChromosome as CustomCuttingChromosome;
+    Console.WriteLine($"Generation {ga.GenerationsNumber}: Best solution: {string.Join(", ", bestChromosome.GetGenes().Select(g => g.Value))}");
 };
 
-// 10. 订阅TerminationReached事件
-ga.TerminationReached += (sender, e) =>
-{
-    var bestChromosome = ga.BestChromosome as BinaryChromosome;
-    var bestFitness = bestChromosome.Fitness;
-    var genes = bestChromosome.GetGenes().Select(g => g.Value).ToArray();
-    Console.WriteLine("终止条件达到");
-    Console.WriteLine("最佳染色体适应度: {0}", bestFitness);
-    Console.WriteLine("最佳染色体基因: {0}", string.Join("", genes));
-};
-
-// 11. 开始遗传算法
 ga.Start();
 
-internal class BinaryChromosome : ChromosomeBase
+public class CustomCuttingChromosome : ChromosomeBase
 {
-    public BinaryChromosome(int length) : base(length)
-    {
-        for (int i = 0; i < length; i++)
-        {
-            ReplaceGene(i, GenerateGene(i));
-        }
-    }
+    private readonly int[] _stockLengths;
 
-    public override IChromosome CreateNew()
+    private readonly int[] _demandLengths;
+
+    private readonly int[] _demandQuantities;
+
+    public CustomCuttingChromosome(int[] stockLengths, int[] demandLengths, int[] demandQuantities)
+        : base(demandLengths.Sum(d => demandQuantities[Array.IndexOf(demandLengths, d)])) // 设置染色体长度
     {
-        return new BinaryChromosome(Length);
+        _stockLengths = stockLengths;
+        _demandLengths = demandLengths;
+        _demandQuantities = demandQuantities;
+
+        CreateGenes();
     }
 
     public override Gene GenerateGene(int geneIndex)
     {
-        return new Gene(RandomizationProvider.Current.GetInt(0, 2));
+        var randomIndex = RandomizationProvider.Current.GetInt(0, _demandLengths.Length);
+        return new Gene(_demandLengths[randomIndex]);
     }
 
-    public override IChromosome Clone()
+    public override IChromosome CreateNew()
     {
-        return base.Clone() as BinaryChromosome;
+        return new CustomCuttingChromosome(_stockLengths, _demandLengths, _demandQuantities);
+    }
+
+    private void CreateGenes()
+    {
+        var geneList = new List<int>();
+
+        // 将需求长度按数量放入基因列表
+        for (int i = 0; i < _demandLengths.Length; i++)
+        {
+            for (int j = 0; j < _demandQuantities[i]; j++)
+            {
+                geneList.Add(_demandLengths[i]);
+            }
+        }
+
+        // 随机打乱基因列表
+        geneList = geneList.OrderBy(x => Guid.NewGuid()).ToList();
+
+        // 替换基因
+        for (int i = 0; i < geneList.Count; i++)
+        {
+            ReplaceGene(i, new Gene(geneList[i]));
+        }
     }
 }
 
-public class MaxOnesFitness : IFitness
+public class CustomCuttingFitness : IFitness
 {
+    private readonly int[] _stockLengths;
+
+    private readonly int[] _demandLengths;
+
+    private readonly int[] _demandQuantities;
+
+    public CustomCuttingFitness(int[] stockLengths, int[] demandLengths, int[] demandQuantities)
+    {
+        _stockLengths = stockLengths;
+        _demandLengths = demandLengths;
+        _demandQuantities = demandQuantities;
+    }
+
     public double Evaluate(IChromosome chromosome)
     {
-        var binaryChromosome = chromosome as BinaryChromosome;
-        var genes = binaryChromosome.GetGenes().Select(i => (int)i.Value);
-        return genes.Sum();
+        var genes = chromosome.GetGenes().Select(g => (int)g.Value).ToList();
+        int totalWaste = 0;
+        int usedStocks = 0;
+
+        var demandCounts = new int[_demandLengths.Length];
+        foreach (var gene in genes)
+        {
+            int index = Array.IndexOf(_demandLengths, gene);
+            if (index >= 0)
+            {
+                demandCounts[index]++;
+            }
+        }
+
+        // 检查是否满足所有需求
+        for (int i = 0; i < _demandLengths.Length; i++)
+        {
+            if (demandCounts[i] < _demandQuantities[i])
+            {
+                return 0; // 不满足所有需求则返回最低适应度
+            }
+        }
+
+        // 计算木条切割浪费和使用的木条数量
+        foreach (var stockLength in _stockLengths)
+        {
+            int currentLength = 0;
+            foreach (var gene in genes)
+            {
+                if (currentLength + gene <= stockLength)
+                {
+                    currentLength += gene;
+                }
+                else
+                {
+                    totalWaste += (stockLength - currentLength);
+                    currentLength = gene;
+                    usedStocks++;
+                }
+            }
+
+            totalWaste += (stockLength - currentLength);
+            usedStocks++;
+        }
+
+        return 1.0 / (1 + totalWaste + usedStocks);
     }
 }
